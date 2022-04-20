@@ -93,6 +93,8 @@ module.exports = {
       `  <figcaption>図` + String(ImageNum) + `. ${caption}</figcaption>\n`+
       `</figure>\n`
       );
+      
+      markdown = markdown.replaceAll("　", "&#x3000;")
 
       try {
         var reg = new RegExp(/\^\^\^cover\s+(.*?)\^\^\^/s);
