@@ -2,59 +2,67 @@ module.exports = {
   onWillParseMarkdown: function(markdown) {
     return new Promise((resolve, reject)=> {
 
-
       var ImageNum = 0;
       var FormulaNum = 0;
 
       // 目次の生成
-      let mokuji = false;
-      let contents = "<h2>目次</h2><ul>\n"
-      let ptr = new Array(0,0,0,0,0,0);
+      let mokuji = true;
+      let contents = "<h2>目次</h2>\n<ul>\n"
+      let sectionCount = new Array(0,0,0,0,0,0);
       let markdown_line = markdown.split('\n');
       let ireko = 0;
 
-      for(let line_num in markdown_line){
-        if(markdown_line[line_num].startsWith("## ")){
-          mokuji = true;
-          if(ptr[4] > 0 && ireko > 0){
-            contents += "</ul>\n";
-            ireko--;
-          }
-          if(ptr[3] > 0 && ireko > 0){
-            contents += "</ul>\n";
-            ireko--;
-          }
-          contents += `<li class="h2"><a href=#item-${++ptr[2]} style="color: black;"> ${ptr[2]}. ${markdown_line[line_num].substr(3)}</a>\n</li>`
-          markdown_line[line_num] = `<h2 id=item-${ptr[2]}>${ptr[2]}. ${markdown_line[line_num].substr(3)}</h2>`;
-          for(i = 3; i < 6; i++) ptr[i] = 0;
-        }else if(markdown_line[line_num].startsWith("### ")){
-          mokuji = true;
-          if(ptr[4] > 0 && ireko > 0){
-            contents += "</ul>\n";
-            ireko--;
-          }
-          if(ptr[3] == 0){
-            if(ireko > 0){
+      const setContentTable = (level, line_num) => {
+        if(line_num >= markdown_line.length){
+          while(ireko --> 0) contents += "</ul>\n";
+          return;
+        }
+        if(level >= 6){
+          setContentTable(2, line_num+1);
+        }
+
+        const h = '#'.repeat(level) + ' ';
+        if(markdown_line[line_num].startsWith(h)){
+          for(let chl_level = 5; chl_level >= level; chl_level--){
+            if(chl_level != level && sectionCount[chl_level] > 0 && ireko > 0){
               contents += "</ul>\n";
               ireko--;
             }
-            contents += "<ul>\n";
-            ireko++;
+            if(chl_level === level && level > 2 && sectionCount[chl_level] === 0){
+              contents += "<ul>\n";
+              ireko++;
+            }
           }
-          contents += `<li class="h3"><a href=#item-${ptr[2]}-${++ptr[3]} style="color: black;"> ${ptr[2]}.${ptr[3]}. ${markdown_line[line_num].substr(4)}</a>\n</li>`
-          markdown_line[line_num] = `<h3 id=item-${ptr[2]}-${ptr[3]}>${ptr[2]}.${ptr[3]}. ${markdown_line[line_num].substr(4)}</h3>`;
-          for(i = 4; i < 6; i++) ptr[i] = 0;
-        }else if(markdown_line[line_num].startsWith("#### ")){
-          mokuji = true;
-          if(ptr[4] == 0){
-            contents += "<ul>\n";
-            ireko++;
+
+          // content += <li class="h2"><a href=#item-${++sectionCount[2]} style="color: black;"> ${sectionCount[2]}. ${markdown_line[line_num].substr(3)}</a>\n</li>`
+          // markdown_line[line_num] = `<h2 id=item-${sectionCount[2]}>${sectionCount[2]}. ${markdown_line[line_num].substr(3)}</h2>`;
+
+          let tag = "item";
+          let sectionTitle = "";
+          for(let nest = 2; nest <= level; nest++){
+            if(nest == level) sectionCount[nest] += 1;
+            tag += `-${sectionCount[nest]}`;
+            sectionTitle += `${sectionCount[nest]}.`
           }
-          contents += `<li class="h4"><a href=#item-${ptr[2]}-${ptr[3]}-${++ptr[4]} style="color: black;"> ${ptr[2]}.${ptr[3]}.${ptr[4]}. ${markdown_line[line_num].substr(5)}</a></li>`
-          markdown_line[line_num] = `<h4 id=item-${ptr[2]}-${ptr[3]}-${ptr[4]}>${ptr[2]}.${ptr[3]}.${ptr[4]}. ${markdown_line[line_num].substr(5)}</h4>`;
+          sectionTitle += ` ${markdown_line[line_num].substr(level+1)}`;
+
+          contents += `<li class=h${level}>`;
+          contents += `<a href=#`;
+          contents += tag;
+          contents += ` style="color: black;">`;
+          contents += sectionTitle;
+          contents += "</a></li>\n";
+          markdown_line[line_num] = `<h${level} id=item${tag}> ${sectionTitle}</h${level}>`;
+          for(let i = level+1; i < 6; i++) sectionCount[i] = 0;
+
+          setContentTable(2, line_num+1);
+        }else{
+          setContentTable(level+1, line_num);
         }
+        return;
       }
-      while(ireko --> 0) contents += "</ul>\n";
+      setContentTable(2, 0);
+      
       contents += '</ul>\n<div class="newpage"></div>\n'
       if(!mokuji) contents = "";
       markdown = contents + markdown_line.join('\n');
@@ -102,9 +110,9 @@ module.exports = {
         var options = new Object();
     
         const optionsLable = 
-        ["sub_date", "subtitle", "title", 
+        ["sub_date", "title", "subtitle", 
         "exp_date", "subject", "teacher", 
-        "number", "name", "collab","desk"]
+        "number", "name", "depart","collab","desk"]
     
         const trans = {
             title: "",
@@ -115,6 +123,7 @@ module.exports = {
             teacher : "担当教員　: ",
             number  : "学籍番号　: ",
             name    : "氏名　　　: ",
+            depart  : "学科　　　: ", 
             collab  : "共同実験者: ",
             desk    : "使用デスク: ",
         }
@@ -160,11 +169,11 @@ module.exports = {
       `</table>\n`+
       `<p class=caption>表` + String(TableNum) + `. ${cap}</p>`
       );
-      html = html.replace(/\<\/pre\>\<p\>(.*?)\<\/p\>/gm,
-      (whole, cap) => 
-      `<a name="program` + String(++programNum) + `"></a>` +
-      `</pre>\n`+
-      `<p class=caption>プログラム` + String(programNum) + `. ${cap}</p>`);
+      //html = html.replace(/\<\/pre\>\<p\>(.*?)\<\/p\>/gm,
+      //(whole, cap) => 
+      //`<a name="program` + String(++programNum) + `"></a>` +
+      //`</pre>\n`+
+      //`<p class=caption>プログラム` + String(programNum) + `. ${cap}</p>`);
 
       return resolve(html)
     })
