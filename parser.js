@@ -1,28 +1,33 @@
 module.exports = {
+  options: {
+    "toc": true, "cap_img": true, "draw_space": true,
+    "cap_prg": true, "cap_tbl": true
+  },
   onWillParseMarkdown: function(markdown) {
     return new Promise((resolve, reject)=> {
-      let settingsOptions = new Object();
-      try{
+      const settingsOptions = () => {
         let settingsReg = new RegExp(/\^\^\^settings\s+(.*?)\^\^\^/s);
-        let settingsContent = settingsReg.exec(markdown)[1];
-        //markdown = markdown.replace(/\^\^\^settings\s+(.*?)\^\^\^/sgm, (whole, content) => "");
+        let settingsContent = null;
+        try {
+          settingsContent = settingsReg.exec(markdown)[1];
+          markdown = markdown.replace(/\^\^\^settings\s+(.*?)\^\^\^/sgm, (whole, content) => "");
+        } catch {}
         
-        const settingsLable = ["toc", "cap_img", "cap_prg", "cap_tbl"];
+        const settingsLable = ["toc", "cap_img", "draw_space", "cap_prg", "cap_tbl"];
 
         if(settingsContent){
           for (const label of settingsLable){
             try{
-              settingsOptions[label] = RegExp(`(?<!.)${label}:\s*(.*)`).exec(settingsContent)[1];
-              settingsOptions[label] = settingsOptions[label].replace(' ', '') === "true" ? true : false;
+              this.options[label] = RegExp(`(?<!.)${label}:\s*(.*)`).exec(settingsContent)[1];
+              this.options[label] = this.options[label].replace(' ', '') === "true" ? true : false;
             }catch(err){
-              settingsOptions[label] = null;
+              this.options[label] = true;
             }
           }
         }
-      }catch(err){}
+      }
 
-      // 目次の生成
-      if(settingsOptions["toc"]){
+      const createTOC = () => {
         let contents = "<h2>目次</h2>\n<ul>\n"
         let sectionCount = new Array(0,0,0,0,0,0);
         let markdown_line = markdown.split('\n');
@@ -74,58 +79,16 @@ module.exports = {
         markdown = contents + markdown_line.join('\n');
       }
 
-      var ImageNum = 0;
-      var FormulaNum = 0;
-    
-      markdown = markdown.replace(/図(\d+)/gm,
-      (whole, number) => 
-      `<a href=#fig${number} class="ref">図${number}</a>`
-      );
-
-      markdown = markdown.replace(/表(\d+)/gm,
-      (whole, number) => 
-      `<a href=#table${number} class="ref">表${number}</a>`
-      );
-
-      markdown = markdown.replace(/式(\d+)/gm,
-      (whole, number) => 
-      `<a href=#formula${number} class="ref">式${number}</a>`
-      );
-
-      markdown = markdown.replace(/プログラム(\d+)/gm,
-      (whole, number) => 
-      `<a href=#program${number} class="ref">プログラム${number}</a>`
-      );
-
-      markdown = markdown.replace(/\$\$\s*\n*(.*?)\s*\n*\$\$/gm, 
-      (whole, formula) => 
-      `<a name="formula` + String(++FormulaNum) + `"></a>\n` + 
-      `\$\$ ${formula} \\tag{` + String(FormulaNum) + `} \$\$`
-      );
-      
-      if(settingsOptions["cap_img"]){
-        markdown = markdown.replace(/!\[(.*?)\]\((.*?)\)/gm, 
-        (whole, caption, url) =>
-        `<a name="fig` + String(++ImageNum) + `"></a>\n` + 
-        `<figure class=image>\n`+
-        `  <img class=image src="${url}"/>\n`+
-        `  <figcaption>図` + String(ImageNum) + `. ${caption}</figcaption>\n`+
-        `</figure>\n`
-        );
-      }
-      
-      markdown = markdown.replaceAll("　", "&#x3000;")
-
-      try {
+      const createCover = () => {
         var reg = new RegExp(/\^\^\^cover\s+(.*?)\^\^\^/s);
         var content = reg.exec(markdown)[1];
-        var options = new Object();
-    
+        var items = new Object();
+              
         const optionsLable = 
         ["sub_date", "title", "subtitle", 
         "exp_date", "subject", "teacher", 
         "number", "name", "depart","collab","desk"]
-    
+              
         const trans = {
             title: "",
             subtitle: "",
@@ -139,24 +102,24 @@ module.exports = {
             collab  : "共同実験者: ",
             desk    : "使用デスク: ",
         }
-    
+        
         var replaceStr = ""
-
+        
         for (const label of optionsLable){
             var query = "(?<!.)" + label + ":(.*)";
         
             try {
-              options[label] = RegExp(query).exec(content)[1];
+              items[label] = RegExp(query).exec(content)[1];
             } catch(err) {
-              options[label] = "";
+              items[label] = "";
             }
         }
-    
+        
         for (const label of optionsLable){
-            if(options[label] === ""){
+            if(items[label] === ""){
               replaceStr += "<p class=" + label + " none></p>\n";
             }else{
-              replaceStr += "<p class=" + label + ">" + trans[label] + options[label] +"</p>\n";
+              replaceStr += "<p class=" + label + ">" + trans[label] + items[label] +"</p>\n";
             }
         }
         
@@ -165,37 +128,67 @@ module.exports = {
 
         markdown = markdown.replace(/\^\^\^cover\s+(.*?)\^\^\^/sgm, (whole, content) => "");
         markdown = cover + markdown;
-    } catch(err){}
+      }
+
+      const createReferenceByNumber = () => {
+        markdown = markdown.replace(/図(\d+)/gm,
+        (whole, number) => 
+        `<a href=#fig${number} class="ref">図${number}</a>`
+        );
+  
+        markdown = markdown.replace(/表(\d+)/gm,
+        (whole, number) => 
+        `<a href=#table${number} class="ref">表${number}</a>`
+        );
+  
+        markdown = markdown.replace(/式(\d+)/gm,
+        (whole, number) => 
+        `<a href=#formula${number} class="ref">式${number}</a>`
+        );
+  
+        markdown = markdown.replace(/プログラム(\d+)/gm,
+        (whole, number) => 
+        `<a href=#program${number} class="ref">プログラム${number}</a>`
+        );
+      }
+      
+      const assignImageNumber = () => {
+        var ImageNum = 0;
+        markdown = markdown.replace(/!\[(.*?)\]\((.*?)\)/gm, 
+        (whole, caption, url) =>
+        `<a name="fig` + String(++ImageNum) + `"></a>\n` + 
+        `<figure class=image>\n`+
+        `  <img class=image src="${url}"/>\n`+
+        `  <figcaption>図` + String(ImageNum) + `. ${caption}</figcaption>\n`+
+        `</figure>\n`
+        );
+      }
+      
+      const assignFormulaNumber = () => {
+        var FormulaNum = 0;
+        markdown = markdown.replace(/\$\$\s*\n*(.*?)\s*\n*\$\$/gm, 
+        (whole, formula) => 
+        `<a name="formula` + String(++FormulaNum) + `"></a>\n` + 
+        `\$\$ ${formula} \\tag{` + String(FormulaNum) + `} \$\$`
+        );
+      }
+      
+      settingsOptions();
+      createCover();
+      if(this.options["toc"]) createTOC();
+      if(this.options["cap_img"]) assignImageNumber();
+      assignFormulaNumber();
+      createReferenceByNumber();
+      if(this.options["draw_space"]) markdown = markdown.replaceAll("　", "&#x3000;");
 
       return resolve(markdown)
     })
   },
   onDidParseMarkdown: function(html, {cheerio}) {
     return new Promise((resolve, reject)=> {
-      var TableNum = 0;
-      let programNum = 0;
 
-      let settingsOptions = new Object();
-      try{
-        let settingsReg = new RegExp(/\^\^\^settings\s+(.*?)\^\^\^/s);
-        let settingsContent = settingsReg.exec(html)[1];
-        html = html.replace(/\^\^\^settings\s+(.*?)\^\^\^/sgm, (whole, content) => "");
-        
-        const settingsLable = ["toc", "cap_img", "cap_prg", "cap_tbl"];
-
-        if(settingsContent){
-          for (const label of settingsLable){
-            try{
-              settingsOptions[label] = RegExp(`(?<!.)${label}:\s*(.*)`).exec(settingsContent)[1];
-              settingsOptions[label] = settingsOptions[label].replace(' ', '') === "true" ? true : false;
-            }catch(err){
-              settingsOptions[label] = null;
-            }
-          }
-        }
-      }catch(err){}
-
-      if(settingsOptions["cap_tbl"]){
+      const assignTableCaption = () => {
+        var TableNum = 0;
         html = html.replace(/\<\/table\>\n\<p\>(.*?)\<\/p\>/gm, 
         (whole, cap) => 
         `<a name="table` + String(++TableNum) + `"></a>` +
@@ -203,7 +196,9 @@ module.exports = {
         `<p class=caption>表` + String(TableNum) + `. ${cap}</p>`
         );
       }
-      if(settingsOptions["cap_prg"]){
+
+      const assignProgramCaption = () => {
+        let programNum = 0;
         html = html.replace(/\<\/pre\>\<p\>(.*?)\<\/p\>/gm,
         (whole, cap) => 
         `<a name="program` + String(++programNum) + `"></a>` +
@@ -211,6 +206,9 @@ module.exports = {
         `<p class=caption>プログラム` + String(programNum) + `. ${cap}</p>`);
       }
 
+      if(this.options["cap_tbl"]) assignTableCaption();
+      if(this.options["cap_prg"]) assignProgramCaption();
+        
       return resolve(html)
     })
   },
