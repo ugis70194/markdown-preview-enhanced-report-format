@@ -3,6 +3,12 @@ module.exports = {
     "toc": true, "cap_img": true, "draw_space": true,
     "cap_prg": true, "cap_tbl": true
   },
+  reference: {
+    fig: {},
+    prg: {},
+    tbl: {},
+    frm: {},
+  },
   onWillParseMarkdown: function(markdown) {
     return new Promise((resolve, reject)=> {
       const settingsOptions = () => {
@@ -172,13 +178,40 @@ module.exports = {
         `\$\$ ${formula} \\tag{` + String(FormulaNum) + `} \$\$`
         );
       }
+
+      const checkLable = () => {
+        let reg = new RegExp(/\<label\s+(.*?):\s*(.*?)\>/gm);
+        let ImageNum = 0, FormulaNum = 0, TableNum = 0, programNum = 0;
+        markdown = markdown.replace(reg, 
+          (whole, category, name) => { 
+            if(category === 'fig') this.reference[category][name] = ++ImageNum;
+            else if(category === 'frm') this.reference[category][name] = ++FormulaNum;
+            else if(category === 'tbl') this.reference[category][name] = ++TableNum;
+            else if(category === 'prg') this.reference[category][name] = ++programNum;
+            return `<a href=#${category}_${name}></a>` 
+          });
+      }
+      const checkRef = () => {
+        let reg = new RegExp(/\<ref\s+(.*?):\s*(.*?)\>/gm);
+        markdown = markdown.replace(reg,
+          (whole, category, name) => {
+            let categoryJP = '';
+            if(category === 'fig') categoryJP = "図";
+            else if(category === 'frm') categoryJP = "式";
+            else if(category === 'tbl') categoryJP = "表";
+            else if(category === 'prg') categoryJP = "プログラム";
+            return `<a href=${category}_${name}>${categoryJP}${this.reference[category][name]}</a>` 
+          });
+      }
       
       settingsOptions();
+      checkLable();
+      checkRef();
       createCover();
+      createReferenceByNumber();
       if(this.options["toc"]) createTOC();
       if(this.options["cap_img"]) assignImageNumber();
       assignFormulaNumber();
-      createReferenceByNumber();
       if(this.options["draw_space"]) markdown = markdown.replaceAll("　", "&#x3000;");
 
       return resolve(markdown)
@@ -215,8 +248,8 @@ module.exports = {
 
       if(this.options["cap_tbl"]) assignTableCaption();
       if(this.options["cap_prg"]) assignProgramCaption();
-      transformNewpageElement();
-        
+      transformNewpageElement()
+
       return resolve(html)
     })
   },
