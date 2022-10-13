@@ -206,8 +206,16 @@ module.exports = {
         `<p class=caption>プログラム` + String(programNum) + `. ${cap}</p>`);
       }
 
+      const transformNewpageElement = () => {
+        html = html.replace(/\<newpage\s*\>/gm,
+        (whole, number) => 
+        `<div class=newpage></div>`
+        );
+      }
+
       if(this.options["cap_tbl"]) assignTableCaption();
       if(this.options["cap_prg"]) assignProgramCaption();
+      transformNewpageElement();
         
       return resolve(html)
     })
