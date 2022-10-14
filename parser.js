@@ -86,9 +86,16 @@ module.exports = {
       }
 
       const createCover = () => {
-        var reg = new RegExp(/\^\^\^cover\s+(.*?)\^\^\^/s);
-        var content = reg.exec(markdown)[1];
-        var items = new Object();
+        let reg = new RegExp(/\^\^\^cover\s+(.*?)\^\^\^/s);
+        markdown = markdown.replace(reg, (whole, content) => "");
+
+        let content = null;
+        try {
+          content = reg.exec(markdown)[1];
+        } catch {}
+        if(!content) return;
+
+        let items = new Object();
               
         const optionsLable = 
         ["sub_date", "title", "subtitle", 
@@ -109,11 +116,10 @@ module.exports = {
             desk    : "使用デスク: ",
         }
         
-        var replaceStr = ""
+        let replaceStr = ""
         
         for (const label of optionsLable){
-            var query = "(?<!.)" + label + ":(.*)";
-        
+            let query = "(?<!.)" + label + ":(.*)";
             try {
               items[label] = RegExp(query).exec(content)[1];
             } catch(err) {
@@ -132,7 +138,6 @@ module.exports = {
         replaceStr += "<div class=newpage></div>";
         let cover = replaceStr;
 
-        markdown = markdown.replace(/\^\^\^cover\s+(.*?)\^\^\^/sgm, (whole, content) => "");
         markdown = cover + markdown;
       }
 
@@ -206,9 +211,9 @@ module.exports = {
       
       settingsOptions();
       checkLable();
-      checkRef();
-      createCover();
-      createReferenceByNumber();
+      checkRef(); 
+      createCover(); 
+      createReferenceByNumber(); 
       if(this.options["toc"]) createTOC();
       if(this.options["cap_img"]) assignImageNumber();
       assignFormulaNumber();
@@ -219,7 +224,6 @@ module.exports = {
   },
   onDidParseMarkdown: function(html, {cheerio}) {
     return new Promise((resolve, reject)=> {
-
       const assignTableCaption = () => {
         var TableNum = 0;
         html = html.replace(/\<\/table\>\n\<p\>(.*?)\<\/p\>/gm, 
