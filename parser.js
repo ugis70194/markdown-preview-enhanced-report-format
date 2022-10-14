@@ -166,9 +166,9 @@ module.exports = {
       const assignImageNumber = () => {
         var ImageNum = 0;
         markdown = markdown.replace(/!\[(.*?)\]\((.*?)\)/gm, 
-        (whole, caption, url) =>
-        `<a name="fig` + String(++ImageNum) + `"></a>\n` + 
+        (whole, caption, url) => 
         `<figure class=image>\n`+
+        `  <a name="fig` + String(++ImageNum) + `"></a>\n` +
         `  <img class=image src="${url}"/>\n`+
         `  <figcaption>図` + String(ImageNum) + `. ${caption}</figcaption>\n`+
         `</figure>\n`
@@ -249,10 +249,29 @@ module.exports = {
         `<div class=newpage></div>`
         );
       }
+      const transformFlexElement = () => {
+        html = html.replace(/\<flex\s*\>(.*?)\<\/flex\>/sgm,
+        (whole, text) => 
+        `<div style="display:flex;">
+          ${text}
+        </div>`
+        );
+      }
+
+      const transformGridElement = () => {
+        html = html.replace(/\<grid\s*col:\s*(\d+)\s*\>(.*?)\<\/grid\>/sgm,
+        (whole, col, text) => 
+        `<div style="display:grid; grid-template-columns: repeat(${col}, ${Math.floor(100/col)}%);">
+          ${text}
+        </div>`
+        );
+      }
 
       if(this.options["cap_tbl"]) assignTableCaption();
       if(this.options["cap_prg"]) assignProgramCaption();
-      transformNewpageElement()
+      transformNewpageElement();
+      transformFlexElement();
+      transformGridElement();
 
       return resolve(html)
     })
