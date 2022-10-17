@@ -138,7 +138,7 @@ columnsの数は`<grid col:n>`のように指定します。rowは無限です�
 <br>
 console.log("ok")
 <br>
-```
+```  
 ok
 </span>
 
