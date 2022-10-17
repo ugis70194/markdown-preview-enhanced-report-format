@@ -214,13 +214,13 @@ module.exports = {
       settingsOptions();
       checkLable();
       checkRef(); 
-      createCover(); 
       createReferenceByNumber(); 
       if(this.options["toc"]) createTOC();
       if(this.options["cap_img"]) assignImageNumber();
       assignFormulaNumber();
       if(this.options["draw_space"]) markdown = markdown.replaceAll("　", "&#x3000;");
-
+      createCover(); 
+      
       return resolve(markdown)
     })
   },
