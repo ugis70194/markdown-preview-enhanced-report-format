@@ -87,12 +87,14 @@ module.exports = {
 
       const createCover = () => {
         let reg = new RegExp(/\^\^\^cover\s+(.*?)\^\^\^/s);
-        markdown = markdown.replace(reg, (whole, content) => "");
 
         let content = null;
         try {
           content = reg.exec(markdown)[1];
-        } catch {}
+        } catch {
+        } finally {
+          markdown = markdown.replace(reg, (whole, content) => "");
+        }
         if(!content) return;
 
         let items = new Object();
